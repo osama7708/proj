@@ -1,4 +1,13 @@
 
+
+
+
+
+
+
+
+
+
 frappe.ui.form.on("User", {
 	setup: function (frm) {
 		frm.set_query("default_workspace", () => {
@@ -139,386 +148,15 @@ frappe.ui.form.on("User", {
 					frm,
 					frm.doc.role_profile_name ? 1 : 0
 				);
-				frm.events.ensure_add_role_button(frm, role_area);
 
 				if (frm.doc.user_type == "System User") {
 					var module_area = $("<div>").appendTo(frm.fields_dict.modules_html.wrapper);
 					frm.module_editor = new frappe.ModuleEditor(frm, module_area);
 				}
 			} else {
-				frm.events.ensure_add_role_button(frm, frm.fields_dict.roles_html.wrapper);
 				frm.roles_editor.show();
 			}
 		}
-	},
-
-	ensure_add_role_button: function (frm, role_area) {
-		const $role_area = $(role_area || frm.fields_dict.roles_html.wrapper);
-		if (!$role_area.length || $role_area.find(".add-role-inline-actions").length) {
-			return;
-		}
-
-		const actions = $(`
-			<div class="add-role-inline-actions" style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-				<button type="button" class="btn btn-sm btn-secondary add-role-inline-btn">
-					${__("إضافة صلاحية")}
-				</button>
-			</div>
-		`);
-
-		actions.find(".add-role-inline-btn").on("click", () => {
-			frm.events.open_system_user_permissions_dialog(frm);
-		});
-
-		$role_area.prepend(actions);
-	},
-
-	open_system_user_permissions_dialog: async function (frm) {
-		const default_permission_name =
-			frm.doc.permissionsuser || frm.doc.username || frm.doc.full_name || frm.doc.name || "";
-
-		const dialog = new frappe.ui.Dialog({
-			title: __("إضافة صلاحية"),
-			size: "extra-large",
-			fields: [
-				{
-					fieldtype: "Data",
-					fieldname: "authority_role_name",
-					label: __("اسم الصلاحية"),
-					reqd: 1,
-					default: default_permission_name,
-				},
-				{
-					fieldtype: "HTML",
-					fieldname: "permissions_html",
-				},
-			],
-			primary_action_label: __("حفظ التعديلات"),
-			primary_action: async (values) => {
-				const role_name = (values.authority_role_name || "").trim();
-				if (!role_name) {
-					frappe.throw(__("يرجى إدخال اسم الصلاحية"));
-				}
-
-				const changes = dialog.__permission_changes || {};
-				if ($.isEmptyObject(changes)) {
-					frappe.show_alert({
-						message: __("لا توجد تغييرات للحفظ"),
-						indicator: "info",
-					});
-					return;
-				}
-
-				const response = await frappe.call({
-					method: "erpnext.accounts.doctype.system_user_permissions.system_user_permissions.save_doctype_permissions",
-					args: {
-						role: role_name,
-						changes,
-					},
-				});
-
-				if (response.message) {
-					frappe.show_alert({ message: response.message, indicator: "green" });
-					dialog.__permission_changes = {};
-					if (!frm.doc.permissionsuser || frm.doc.permissionsuser !== role_name) {
-						frm.set_value("permissionsuser", role_name);
-					}
-					await frm.events.render_system_user_permissions_dialog(frm, dialog, role_name);
-				}
-			},
-		});
-
-		dialog.show();
-		dialog.$wrapper.find(".modal-dialog").css("max-width", "96vw");
-		dialog.$wrapper.find(".modal-content").css("min-height", "82vh");
-		dialog.get_field("permissions_html").$wrapper.html(
-			`<div class="text-muted small" style="padding: 12px 0;">${__("جاري تحميل واجهة الصلاحيات...")}</div>`
-		);
-
-		dialog.get_field("authority_role_name").$input.on("change", async () => {
-			const role_name = (dialog.get_value("authority_role_name") || "").trim();
-			if (!role_name) {
-				dialog.get_field("permissions_html").$wrapper.empty();
-				dialog.__permission_changes = {};
-				return;
-			}
-			await frm.events.render_system_user_permissions_dialog(frm, dialog, role_name);
-		});
-
-		if (default_permission_name) {
-			await frm.events.render_system_user_permissions_dialog(frm, dialog, default_permission_name);
-		}
-	},
-
-	render_system_user_permissions_dialog: async function (frm, dialog, role_name) {
-		const ensure_permission_source = async () => {
-			const permission_exists = await frappe.db.exists("System User Permissions", role_name);
-			if (permission_exists) {
-				return;
-			}
-
-			try {
-				await frappe.call({
-					method: "frappe.client.insert",
-					args: {
-						doc: {
-							doctype: "System User Permissions",
-							authority_role_name: role_name,
-						},
-					},
-				});
-			} catch (error) {
-				const role_exists = await frappe.db.exists("Role", role_name);
-				if (!role_exists) {
-					throw error;
-				}
-			}
-		};
-
-		await ensure_permission_source();
-
-		const modules = {
-			"الحسابات": [
-				"Payment Entry",
-				"Payment Entry Pay",
-				"Financial Receipt",
-				"Financial Bill Exchange",
-				"Journal Entry",
-				"Account",
-				"Mode Of Payment",
-				"Cost Center",
-				"Cost Center Allocation",
-				"Period Closing Voucher",
-				"Currency",
-				"Currency Exchange",
-				"Connect Users Funds",
-			],
-			"السفريات والسياحة": [
-				"Agent Sales Invoice",
-				"Transaction Costs Screen",
-				"Visa Application",
-				"Hajj Umrah",
-				"Airline Ticket Refunds",
-				"Flight Booking",
-				"Transport Service",
-				"Passport Service",
-				"Residency Service",
-				"Travel Insurance",
-				"Visa Extension",
-				"Document Attestation",
-				"Travel Work Permit",
-				"Professions",
-				"Attestation Type",
-				"Visa Report",
-				"Services Profit Report",
-			],
-			"العملاء - الموردين والوكلاء - الموظفين": ["Customer", "Supplier", "Employee"],
-			"العمليات الادارية": [
-				"Asset",
-				"Location",
-				"Asset Category",
-				"Asset Movement",
-				"Asset Maintenance Team",
-				"Asset Value Adjustment",
-			],
-			"ادارة النظام": [
-				"Company",
-				"System Settings",
-				"Global Defaults",
-				"Accounts Settings",
-				"User",
-				"System User Permissions",
-				"Database Backup",
-				"Version",
-				"Role Permission For Page And Report",
-				"User Type",
-				"Activity Log",
-			],
-		};
-
-		const field_labels = {
-			read: "قراءة",
-			write: "كتابة",
-			create: "إنشاء",
-			submit: "ترحيل",
-			cancel: "إلغاء",
-			delete: "حذف",
-			amend: "تعديل",
-			report: "تقرير",
-			export: "تصدير",
-			import: "استيراد",
-			share: "مشاركة",
-			print: "طباعة",
-		};
-
-		const perms_order = [
-			"read",
-			"write",
-			"create",
-			"submit",
-			"cancel",
-			"delete",
-			"amend",
-			"report",
-			"export",
-			"import",
-			"share",
-			"print",
-		];
-
-		const $wrapper = dialog.get_field("permissions_html").$wrapper;
-		dialog.__permission_changes = {};
-
-		$wrapper.html(`
-			<div class="system-user-permissions-dialog" style="display:flex; gap:16px; min-height:60vh; border:1px solid #dfe2e6; border-radius:10px; padding:16px;">
-				<div class="permissions-modules-panel" style="width:280px; border-left:1px solid #eceff2; padding-left:8px; overflow-y:auto; max-height:65vh;"></div>
-				<div class="permissions-doctypes-panel" style="flex:1; overflow-y:auto; max-height:65vh;"></div>
-			</div>
-		`);
-
-		const $dialogRoot = $wrapper.find(".system-user-permissions-dialog");
-		const $modulesPanel = $dialogRoot.find(".permissions-modules-panel");
-		const $doctypesPanel = $dialogRoot.find(".permissions-doctypes-panel");
-
-		Object.keys(modules).forEach((sectionName) => {
-			$modulesPanel.append(`
-				<div class="permission-section-card" data-section="${frappe.utils.escape_html(sectionName)}" style="display:flex; align-items:center; justify-content:space-between; border:1px solid #ddd; padding:8px 10px; border-radius:8px; background:#fff; margin-bottom:8px;">
-					<span class="section-label" data-section="${frappe.utils.escape_html(sectionName)}" style="cursor:pointer; flex:1;">${sectionName}</span>
-					<input type="checkbox" class="section-checkbox" data-section="${frappe.utils.escape_html(sectionName)}">
-				</div>
-			`);
-		});
-
-		const update_counters = (sectionName, doctypeName) => {
-			const $panel = $doctypesPanel.find(`.doctype-panel[data-section="${CSS.escape(sectionName)}"][data-doctype="${CSS.escape(doctypeName)}"]`);
-			const total = $panel.find(".perm-checkbox").length;
-			const checked = $panel.find(".perm-checkbox:checked").length;
-			$panel.find(".doctype-counter").text(`${checked}/${total}`);
-			$panel.find(".doctype-checkbox").prop("checked", total > 0 && checked === total);
-
-			const $sectionPanels = $doctypesPanel.find(`.doctype-panel[data-section="${CSS.escape(sectionName)}"]`);
-			const allDoctypesChecked =
-				$sectionPanels.length > 0 &&
-				$sectionPanels.find(".doctype-checkbox").length ===
-					$sectionPanels.find(".doctype-checkbox:checked").length;
-			$modulesPanel
-				.find(`.section-checkbox[data-section="${CSS.escape(sectionName)}"]`)
-				.prop("checked", allDoctypesChecked);
-		};
-
-		const render_right_panel = async (sectionName) => {
-			$doctypesPanel.html(
-				`<div class="text-muted small" style="padding: 8px 0;">${__("جاري تحميل الصلاحيات...")}</div>`
-			);
-
-			const doctypes = modules[sectionName] || [];
-			$doctypesPanel.empty();
-
-			for (const dtName of doctypes) {
-				const response = await frappe.call({
-					method: "erpnext.accounts.doctype.system_user_permissions.system_user_permissions.get_doctype_permissions",
-					args: {
-						role: role_name,
-						doctype: dtName,
-					},
-				});
-
-				const permissions = response.message || {};
-				const permCheckboxes = perms_order
-					.map(
-						(perm) => `
-							<div style="flex:1 1 120px; margin:4px 0;">
-								<label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
-									<input type="checkbox" class="perm-checkbox"
-										data-section="${frappe.utils.escape_html(sectionName)}"
-										data-doctype="${frappe.utils.escape_html(dtName)}"
-										data-perm="${perm}"
-										${permissions[perm] ? "checked" : ""}>
-									<span>${field_labels[perm]}</span>
-								</label>
-							</div>
-						`
-					)
-					.join("");
-
-				$doctypesPanel.append(`
-					<div class="doctype-panel" data-section="${frappe.utils.escape_html(sectionName)}" data-doctype="${frappe.utils.escape_html(dtName)}" style="border:1px solid #eee; border-radius:8px; margin-bottom:12px; overflow:hidden;">
-						<div class="doctype-header" style="background:#f7f7f7; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
-							<label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer;">
-								<input type="checkbox" class="doctype-checkbox" data-section="${frappe.utils.escape_html(sectionName)}" data-doctype="${frappe.utils.escape_html(dtName)}">
-								<span>${__(dtName)}</span>
-							</label>
-							<span class="doctype-counter">${Object.values(permissions).filter(Boolean).length}/${perms_order.length}</span>
-						</div>
-						<div class="doctype-body" style="padding:12px; display:flex; flex-wrap:wrap; gap:8px;">
-							${permCheckboxes}
-						</div>
-					</div>
-				`);
-
-				update_counters(sectionName, dtName);
-			}
-		};
-
-		$dialogRoot.off("click", ".section-label");
-		$dialogRoot.on("click", ".section-label", async function () {
-			const sectionName = $(this).data("section");
-			$modulesPanel.find(".permission-section-card").css("background", "#fff");
-			$(this).closest(".permission-section-card").css("background", "#e8f5ff");
-			await render_right_panel(sectionName);
-		});
-
-		$dialogRoot.off("change", ".perm-checkbox");
-		$dialogRoot.on("change", ".perm-checkbox", function () {
-			const sectionName = $(this).data("section");
-			const doctypeName = $(this).data("doctype");
-			const permName = $(this).data("perm");
-			const checked = $(this).is(":checked") ? 1 : 0;
-
-			if (!dialog.__permission_changes[doctypeName]) {
-				dialog.__permission_changes[doctypeName] = {};
-			}
-
-			dialog.__permission_changes[doctypeName][permName] = checked;
-			update_counters(sectionName, doctypeName);
-		});
-
-		$dialogRoot.off("change", ".doctype-checkbox");
-		$dialogRoot.on("change", ".doctype-checkbox", function () {
-			const sectionName = $(this).data("section");
-			const doctypeName = $(this).data("doctype");
-			const checked = $(this).is(":checked");
-			$doctypesPanel
-				.find(`.perm-checkbox[data-section="${CSS.escape(sectionName)}"][data-doctype="${CSS.escape(doctypeName)}"]`)
-				.prop("checked", checked)
-				.trigger("change");
-		});
-
-		$dialogRoot.off("change", ".section-checkbox");
-		$dialogRoot.on("change", ".section-checkbox", function () {
-			const sectionName = $(this).data("section");
-			const checked = $(this).is(":checked");
-			$doctypesPanel
-				.find(`.doctype-checkbox[data-section="${CSS.escape(sectionName)}"]`)
-				.prop("checked", checked)
-				.trigger("change");
-			$doctypesPanel
-				.find(`.perm-checkbox[data-section="${CSS.escape(sectionName)}"]`)
-				.prop("checked", checked)
-				.trigger("change");
-		});
-
-		$dialogRoot.off("click", ".doctype-header");
-		$dialogRoot.on("click", ".doctype-header", function (event) {
-			if ($(event.target).is("input")) {
-				return;
-			}
-			$(this).siblings(".doctype-body").slideToggle(150);
-		});
-
-		const firstSection = Object.keys(modules)[0];
-		$modulesPanel.find(".permission-section-card").first().css("background", "#e8f5ff");
-		await render_right_panel(firstSection);
 	},
 	refresh: function (frm) {
 
@@ -1000,11 +638,19 @@ frappe.ui.form.on('User', {
         const tabs = ['#user-add_permissions_user-tab'];
 
         tabs.forEach(function(tab) {
+
+
+
+
+
             $(tab).off('shown.bs.tab').on('shown.bs.tab', function() {
 
 				//frm.disable_save();
 				
 		
+
+
+			
 				if ($('.custom-permissions-container').length === 0) {
 
                 frappe.call({
@@ -1309,3 +955,6 @@ frappe.ui.form.on('User', {
 	}
 
 });
+
+
+
