@@ -1,13 +1,4 @@
 
-
-
-
-
-
-
-
-
-
 frappe.ui.form.on("User", {
 	setup: function (frm) {
 		frm.set_query("default_workspace", () => {
