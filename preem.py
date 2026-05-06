@@ -386,15 +386,18 @@ class User(Document):
 		user_type_doc.update_modules_in_user(self)
 
 	def has_desk_access(self):
-		"""Return true if any of the set roles has desk access"""
-		if not self.roles:
-			return False
+		"""Return true if the user has desk access through roles or separate permissions."""
+		role_names = [d.role for d in (self.roles or []) if d.role]
 
-		role_table = DocType("Role")
-		return frappe.db.count(
-			role_table,
-			((role_table.desk_access == 1) & (role_table.name.isin([d.role for d in self.roles]))),
-		)
+		if role_names:
+			role_table = DocType("Role")
+			if frappe.db.count(
+				role_table,
+				((role_table.desk_access == 1) & (role_table.name.isin(role_names))),
+			):
+				return True
+
+		return has_separate_permissions_access(self.name)
 
 	def share_with_self(self):
 		if self.name in STANDARD_USERS:
@@ -988,7 +991,132 @@ def save_permissions(role_name, permissions):
     return "success"
 
 
+SEPARATE_PERMISSION_ROLE_PREFIX = "__user_perm__::"
+SEPARATE_PERMISSION_FIELDS = (
+	"select",
+	"read",
+	"write",
+	"create",
+	"delete",
+	"submit",
+	"cancel",
+	"amend",
+	"report",
+	"export",
+	"import",
+	"share",
+	"print",
+	"email",
+)
 
+
+def _get_separate_permission_role_name(user: str) -> str:
+	user_name = frappe.db.get_value("User", user, "name")
+	if not user_name:
+		frappe.throw(_("User {0} was not found").format(user))
+	return f"{SEPARATE_PERMISSION_ROLE_PREFIX}{sha256_hash(user_name)[:20]}"
+
+
+def has_separate_permissions_access(user: str) -> bool:
+	role_name = _get_separate_permission_role_name(user)
+	return bool(frappe.db.count("Custom DocPerm", {"role": role_name}))
+
+
+def _ensure_separate_permission_role(user: str) -> str:
+	role_name = _get_separate_permission_role_name(user)
+
+	if not frappe.db.exists("Role", role_name):
+		frappe.get_doc(
+			{
+				"doctype": "Role",
+				"role_name": role_name,
+				"name": role_name,
+				"desk_access": 0,
+				"disabled": 0,
+				"is_custom": 1,
+				"is_custom_user": 0,
+			}
+		).insert(ignore_permissions=True)
+
+	if not frappe.db.exists(
+		"Has Role",
+		{"parent": user, "parenttype": "User", "parentfield": "roles", "role": role_name},
+	):
+		frappe.get_doc(
+			{
+				"doctype": "Has Role",
+				"parent": user,
+				"parenttype": "User",
+				"parentfield": "roles",
+				"role": role_name,
+			}
+		).insert(ignore_permissions=True)
+
+	return role_name
+
+
+@frappe.whitelist()
+def get_separate_permissions_for_user(user: str):
+	role_name = _get_separate_permission_role_name(user)
+	if not frappe.db.exists("Role", role_name):
+		return {"role": role_name, "permissions": []}
+
+	fields = ["parent", *SEPARATE_PERMISSION_FIELDS]
+	permissions = frappe.get_all(
+		"Custom DocPerm",
+		filters={"role": role_name},
+		fields=fields,
+		order_by="parent asc",
+	)
+	return {"role": role_name, "permissions": permissions}
+
+
+@frappe.whitelist()
+def save_separate_permissions_for_user(user: str, permissions):
+	role_name = _ensure_separate_permission_role(user)
+
+	if isinstance(permissions, str):
+		permissions = json.loads(permissions)
+
+	existing_rows = frappe.get_all(
+		"Custom DocPerm",
+		filters={"role": role_name},
+		fields=["name", "parent"],
+	)
+	existing_by_parent = {row["parent"]: row["name"] for row in existing_rows}
+	received_parents = set(permissions.keys())
+
+	for parent, row in permissions.items():
+		values = {field: cint((row or {}).get(field, 0)) for field in SEPARATE_PERMISSION_FIELDS}
+		values["select"] = 1 if any(values.get(field, 0) for field in SEPARATE_PERMISSION_FIELDS if field != "select") else 0
+
+		existing_name = existing_by_parent.get(parent)
+		if not any(values.values()):
+			if existing_name:
+				frappe.delete_doc("Custom DocPerm", existing_name, ignore_permissions=True)
+			continue
+
+		doc_values = {
+			"parent": parent,
+			"role": role_name,
+			"permlevel": 0,
+			"if_owner": 0,
+			**values,
+		}
+
+		if existing_name:
+			doc = frappe.get_doc("Custom DocPerm", existing_name)
+			doc.update(doc_values)
+			doc.save(ignore_permissions=True)
+		else:
+			frappe.get_doc({"doctype": "Custom DocPerm", **doc_values}).insert(ignore_permissions=True)
+
+	for parent, name in existing_by_parent.items():
+		if parent not in received_parents:
+			frappe.delete_doc("Custom DocPerm", name, ignore_permissions=True)
+
+	frappe.clear_cache(user=user)
+	return {"message": _("Separate permissions saved successfully"), "role": role_name}
 
 @frappe.whitelist()
 def get_timezones():
@@ -1704,4 +1832,3 @@ def get_services_data():
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_services_data error")
         return {"success": False, "error": str(e), "data": []}
-
