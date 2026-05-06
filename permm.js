@@ -158,18 +158,33 @@ frappe.ui.form.on("User", {
 		}
 
 		const actions = $(`
-			<div class="add-role-inline-actions" style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+			<div class="add-role-inline-actions" style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+				<button type="button" class="btn btn-sm btn-default open-separate-permissions-tab-btn">
+					${__("الإمكانيات المنفصلة")}
+				</button>
 				<button type="button" class="btn btn-sm btn-secondary add-role-inline-btn">
 					${__("إضافة صلاحية")}
 				</button>
 			</div>
 		`);
 
+		actions.find(".open-separate-permissions-tab-btn").on("click", () => {
+			frm.events.open_separate_permissions_tab(frm);
+		});
+
 		actions.find(".add-role-inline-btn").on("click", () => {
 			frm.events.open_system_user_permissions_dialog(frm);
 		});
 
 		$role_area.prepend(actions);
+	},
+
+	open_separate_permissions_tab: function (frm) {
+		const $tabLink = $("#user-separate_permissions_tab-tab");
+		if ($tabLink.length) {
+			$tabLink.tab("show");
+			frm.events.render_separate_permissions_tab(frm);
+		}
 	},
 
 	open_system_user_permissions_dialog: async function (frm) {
@@ -764,13 +779,30 @@ frappe.ui.form.on("User", {
 		frm.trigger("time_zone");
 	},
 validate: function (frm) {
-    // تحديث أدوار المحرر إن وجد
-    if (frm.roles_editor) {
-        frm.roles_editor.set_roles_in_table();
-    }
+	if (!frm.roles_editor?.multicheck) {
+		return;
+	}
 
-   
+	const checked_options = frm.roles_editor.multicheck.get_checked_options();
+	const roles = frm.doc.roles || [];
 
+	roles.forEach((role_doc) => {
+		const role_name = role_doc.role || "";
+		if (role_name.startsWith("__user_perm__::")) {
+			return;
+		}
+
+		if (!checked_options.includes(role_name)) {
+			frappe.model.clear_doc(role_doc.doctype, role_doc.name);
+		}
+	});
+
+	checked_options.forEach((role_name) => {
+		if (!roles.find((row) => row.role === role_name)) {
+			const role_doc = frappe.model.add_child(frm.doc, "Has Role", "roles");
+			role_doc.role = role_name;
+		}
+	});
 },
 
 	enabled: function (frm) {
@@ -884,6 +916,455 @@ validate: function (frm) {
 					__("Confirm")
 				);
 			});
+		}
+	},
+});
+
+frappe.ui.form.on("User", {
+	before_save: async function (frm) {
+		frm.events.ensure_separate_permission_role_on_form(
+			frm,
+			frm.__separate_permission_internal_role
+		);
+
+		if (
+			frm.__saving_separate_permissions ||
+			$.isEmptyObject(frm.__separate_permission_changes || {})
+		) {
+			return;
+		}
+
+		frm.__saving_separate_permissions = true;
+		try {
+			await frm.events.save_separate_permissions(frm, {
+				skip_form_save: true,
+				suppress_empty_message: true,
+			});
+		} finally {
+			frm.__saving_separate_permissions = false;
+		}
+	},
+
+	refresh: function (frm) {
+		const should_show = !frm.is_new() && ["System User", "Website User"].includes(frm.doc.user_type);
+		frm.set_df_property("separate_permissions_tab", "hidden", !should_show);
+		frm.set_df_property("save_separate_permissions", "hidden", !should_show);
+		frm.refresh_field("save_separate_permissions");
+		frm.refresh_field("separate_permissions_html");
+
+		if (!should_show && frm.fields_dict.separate_permissions_html?.$wrapper) {
+			frm.fields_dict.separate_permissions_html.$wrapper.empty();
+			return;
+		}
+
+		frm.events.setup_separate_permissions_tab(frm);
+	},
+
+	setup: function (frm) {
+		frm.events.setup_separate_permissions_tab(frm);
+	},
+
+	setup_separate_permissions_tab: function (frm) {
+		const tab_link_selector = "#user-separate_permissions_tab-tab";
+		const tab_pane_selector = "#user-separate_permissions_tab";
+
+		$(tab_link_selector)
+			.off("shown.bs.tab.separate_permissions")
+			.on("shown.bs.tab.separate_permissions", async () => {
+				await frm.events.render_separate_permissions_tab(frm);
+			});
+
+		if (
+			$(tab_link_selector).hasClass("active") ||
+			$(tab_pane_selector).hasClass("active")
+		) {
+			frm.events.render_separate_permissions_tab(frm);
+		}
+	},
+
+	get_separate_permissions_role_name: function (frm) {
+		return (
+			frm.doc.full_name ||
+			frm.doc.username ||
+			frm.doc.name ||
+			""
+		).trim();
+	},
+
+	get_separate_permissions_config: function () {
+		return {
+			modules: {
+				"الحسابات": [
+					"Payment Entry",
+					"Payment Entry Pay",
+					"Financial Receipt",
+					"Financial Bill Exchange",
+					"Journal Entry",
+					"Account",
+					"Mode Of Payment",
+					"Cost Center",
+					"Cost Center Allocation",
+					"Period Closing Voucher",
+					"Currency",
+					"Currency Exchange",
+					"Connect Users Funds",
+				],
+				"السفريات والسياحة": [
+					"Agent Sales Invoice",
+					"Transaction Costs Screen",
+					"Visa Application",
+					"Hajj Umrah",
+					"Airline Ticket Refunds",
+					"Flight Booking",
+					"Transport Service",
+					"Passport Service",
+					"Residency Service",
+					"Travel Insurance",
+					"Visa Extension",
+					"Document Attestation",
+					"Travel Work Permit",
+					"Professions",
+					"Attestation Type",
+					"Visa Report",
+					"Services Profit Report",
+				],
+				"العملاء - الموردين والوكلاء - الموظفين": ["Customer", "Supplier", "Employee"],
+				"العمليات الادارية": [
+					"Asset",
+					"Location",
+					"Asset Category",
+					"Asset Movement",
+					"Asset Maintenance Team",
+					"Asset Value Adjustment",
+				],
+				"ادارة النظام": [
+					"Company",
+					"System Settings",
+					"Global Defaults",
+					"Accounts Settings",
+					"User",
+					"System User Permissions",
+					"Database Backup",
+					"Version",
+					"Role Permission For Page And Report",
+					"User Type",
+					"Activity Log",
+				],
+			},
+			field_labels: {
+				read: "قراءة",
+				write: "كتابة",
+				create: "إنشاء",
+				submit: "ترحيل",
+				cancel: "إلغاء",
+				delete: "حذف",
+				amend: "تعديل",
+				report: "تقرير",
+				export: "تصدير",
+				import: "استيراد",
+				share: "مشاركة",
+				print: "طباعة",
+			},
+			perms_order: [
+				"read",
+				"write",
+				"create",
+				"submit",
+				"cancel",
+				"delete",
+				"amend",
+				"report",
+				"export",
+				"import",
+				"share",
+				"print",
+			],
+		};
+	},
+
+	render_separate_permissions_tab: async function (frm) {
+		const wrapper = frm.fields_dict.separate_permissions_html?.$wrapper;
+		if (!wrapper?.length) {
+			return;
+		}
+
+		const display_name = frm.events.get_separate_permissions_role_name(frm);
+		if (!display_name) {
+			wrapper.html(
+				`<div class="text-muted small" style="padding:24px;">${__("لا يوجد اسم صلاحية مرتبط بهذا المستخدم بعد.")}</div>`
+			);
+			return;
+		}
+
+		if (frm.__separate_permission_user !== frm.doc.name) {
+			frm.__separate_permission_changes = {};
+			frm.__separate_permission_user = frm.doc.name;
+		}
+
+		const { modules, field_labels, perms_order } = frm.events.get_separate_permissions_config();
+		const active_section =
+			frm.__separate_permission_active_section || Object.keys(modules)[0];
+
+		const permissions_response = await frappe.call({
+			method: "frappe.core.doctype.user.user.get_separate_permissions_for_user",
+			args: { user: frm.doc.name },
+		});
+		const existing_permissions = {};
+		(permissions_response.message?.permissions || []).forEach((row) => {
+			existing_permissions[row.parent] = row;
+		});
+		frm.__separate_permission_existing = existing_permissions;
+		frm.__separate_permission_internal_role = permissions_response.message?.role || null;
+
+		wrapper.html(`
+			<div class="separate-permissions-root" style="display:flex; flex-direction:column; gap:16px; padding-top:6px;">
+				<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; border:1px solid #dbe3ea; border-radius:14px; padding:18px 20px; background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);">
+					<div>
+						<div style="font-size:13px; font-weight:700; color:#0f766e; letter-spacing:.2px;">${__("الإمكانيات المنفصلة")}</div>
+						<div style="font-size:28px; font-weight:700; color:#0f172a; margin-top:6px;">${frappe.utils.escape_html(display_name)}</div>
+					</div>
+					<div style="max-width:540px; text-align:left; color:#64748b; font-size:13px; line-height:1.8;">
+						${__("واجهة مستقلة وثابتة لإدارة الإمكانيات التفصيلية لهذا المستخدم على DocTypes محددة، بدون أي اعتماد على التبويب المخفي القديم.")}
+					</div>
+				</div>
+				<div class="separate-permissions-shell" style="display:flex; gap:18px; min-height:62vh; border:1px solid #dfe5ec; border-radius:14px; background:#fff; padding:18px;">
+					<div class="separate-permissions-modules-panel" style="width:290px; border-left:1px solid #eef2f6; padding-left:10px; overflow-y:auto; max-height:68vh;"></div>
+					<div class="separate-permissions-doctypes-panel" style="flex:1; overflow-y:auto; max-height:68vh;"></div>
+				</div>
+			</div>
+		`);
+
+		const $root = wrapper.find(".separate-permissions-root");
+		const $modules_panel = $root.find(".separate-permissions-modules-panel");
+		const $doctypes_panel = $root.find(".separate-permissions-doctypes-panel");
+
+		Object.keys(modules).forEach((section_name) => {
+			$modules_panel.append(`
+				<div class="permission-section-card" data-section="${frappe.utils.escape_html(section_name)}" style="display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d8dee6; padding:11px 12px; border-radius:12px; background:#fff; margin-bottom:10px; box-shadow:0 1px 2px rgba(15,23,42,.03);">
+					<span class="section-label" data-section="${frappe.utils.escape_html(section_name)}" style="cursor:pointer; flex:1; font-weight:700; color:#0f172a;">${section_name}</span>
+					<input type="checkbox" class="section-checkbox" data-section="${frappe.utils.escape_html(section_name)}">
+				</div>
+			`);
+		});
+
+		const update_counters = (section_name, doctype_name) => {
+			const $panel = $doctypes_panel.find(
+				`.doctype-panel[data-section="${CSS.escape(section_name)}"][data-doctype="${CSS.escape(
+					doctype_name
+				)}"]`
+			);
+			const total = $panel.find(".perm-checkbox").length;
+			const checked = $panel.find(".perm-checkbox:checked").length;
+			$panel.find(".doctype-counter").text(`${checked}/${total}`);
+			$panel.find(".doctype-checkbox").prop("checked", total > 0 && checked === total);
+
+			const $section_panels = $doctypes_panel.find(
+				`.doctype-panel[data-section="${CSS.escape(section_name)}"]`
+			);
+			const all_doctypes_checked =
+				$section_panels.length > 0 &&
+				$section_panels.find(".doctype-checkbox").length ===
+					$section_panels.find(".doctype-checkbox:checked").length;
+			$modules_panel
+				.find(`.section-checkbox[data-section="${CSS.escape(section_name)}"]`)
+				.prop("checked", all_doctypes_checked);
+		};
+
+		const render_right_panel = async (section_name) => {
+			frm.__separate_permission_active_section = section_name;
+			$doctypes_panel.html(
+				`<div class="text-muted small" style="padding: 8px 0;">${__("جاري تحميل الصلاحيات...")}</div>`
+			);
+
+			const doctypes = modules[section_name] || [];
+			$doctypes_panel.empty();
+
+			for (const dt_name of doctypes) {
+				const permissions = existing_permissions[dt_name] || {};
+				const pending_changes = frm.__separate_permission_changes?.[dt_name] || {};
+				const effective_permissions = { ...permissions, ...pending_changes };
+
+				const perm_checkboxes = perms_order
+					.map(
+						(perm) => `
+							<div style="flex:1 1 120px; margin:4px 0;">
+								<label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+									<input type="checkbox" class="perm-checkbox"
+										data-section="${frappe.utils.escape_html(section_name)}"
+										data-doctype="${frappe.utils.escape_html(dt_name)}"
+										data-perm="${perm}"
+										${effective_permissions[perm] ? "checked" : ""}>
+									<span>${field_labels[perm]}</span>
+								</label>
+							</div>
+						`
+					)
+					.join("");
+
+				$doctypes_panel.append(`
+					<div class="doctype-panel" data-section="${frappe.utils.escape_html(section_name)}" data-doctype="${frappe.utils.escape_html(dt_name)}" style="border:1px solid #e7edf3; border-radius:14px; margin-bottom:14px; overflow:hidden; box-shadow:0 1px 2px rgba(15,23,42,.03);">
+						<div class="doctype-header" style="background:#f8fafc; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+							<label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:700; color:#1e293b;">
+								<input type="checkbox" class="doctype-checkbox" data-section="${frappe.utils.escape_html(section_name)}" data-doctype="${frappe.utils.escape_html(dt_name)}">
+								<span>${__(dt_name)}</span>
+							</label>
+							<span class="doctype-counter" style="font-weight:700; color:#0f766e;">${Object.values(effective_permissions).filter(Boolean).length}/${perms_order.length}</span>
+						</div>
+						<div class="doctype-body" style="padding:14px; display:flex; flex-wrap:wrap; gap:8px;">
+							${perm_checkboxes}
+						</div>
+					</div>
+				`);
+
+				update_counters(section_name, dt_name);
+			}
+		};
+
+		$root.off("click", ".section-label");
+		$root.on("click", ".section-label", async function () {
+			const section_name = $(this).data("section");
+			$modules_panel.find(".permission-section-card").css("background", "#fff");
+			$(this).closest(".permission-section-card").css("background", "#ecfeff");
+			await render_right_panel(section_name);
+		});
+
+		$root.off("change", ".perm-checkbox");
+		$root.on("change", ".perm-checkbox", function () {
+			const section_name = $(this).data("section");
+			const doctype_name = $(this).data("doctype");
+			const perm_name = $(this).data("perm");
+			const checked = $(this).is(":checked") ? 1 : 0;
+
+			if (!frm.__separate_permission_changes) {
+				frm.__separate_permission_changes = {};
+			}
+			if (!frm.__separate_permission_changes[doctype_name]) {
+				frm.__separate_permission_changes[doctype_name] = {};
+			}
+
+			frm.__separate_permission_changes[doctype_name][perm_name] = checked;
+			frm.dirty();
+			update_counters(section_name, doctype_name);
+		});
+
+		$root.off("change", ".doctype-checkbox");
+		$root.on("change", ".doctype-checkbox", function () {
+			const section_name = $(this).data("section");
+			const doctype_name = $(this).data("doctype");
+			const checked = $(this).is(":checked");
+			$doctypes_panel
+				.find(
+					`.perm-checkbox[data-section="${CSS.escape(section_name)}"][data-doctype="${CSS.escape(
+						doctype_name
+					)}"]`
+				)
+				.prop("checked", checked)
+				.trigger("change");
+		});
+
+		$root.off("change", ".section-checkbox");
+		$root.on("change", ".section-checkbox", function () {
+			const section_name = $(this).data("section");
+			const checked = $(this).is(":checked");
+			$doctypes_panel
+				.find(`.doctype-checkbox[data-section="${CSS.escape(section_name)}"]`)
+				.prop("checked", checked)
+				.trigger("change");
+			$doctypes_panel
+				.find(`.perm-checkbox[data-section="${CSS.escape(section_name)}"]`)
+				.prop("checked", checked)
+				.trigger("change");
+		});
+
+		$root.off("click", ".doctype-header");
+		$root.on("click", ".doctype-header", function (event) {
+			if ($(event.target).is("input")) {
+				return;
+			}
+			$(this).siblings(".doctype-body").slideToggle(140);
+		});
+
+		$modules_panel
+			.find(`.permission-section-card[data-section="${CSS.escape(active_section)}"]`)
+			.css("background", "#ecfeff");
+		await render_right_panel(active_section);
+	},
+
+	ensure_separate_permission_role_on_form: function (frm, role_name) {
+		if (!role_name) {
+			return;
+		}
+
+		if (!frm.doc.roles) {
+			frm.doc.roles = [];
+		}
+
+		if (!frm.doc.roles.some((row) => row.role === role_name)) {
+			const role_doc = frappe.model.add_child(frm.doc, "Has Role", "roles");
+			role_doc.role = role_name;
+		}
+	},
+
+	save_separate_permissions: async function (frm, options = {}) {
+		const { skip_form_save = false, suppress_empty_message = false } = options;
+		const { perms_order } = frm.events.get_separate_permissions_config();
+		const changes = frm.__separate_permission_changes || {};
+
+		if (!frm.doc.name) {
+			frappe.msgprint(__("لا يوجد مستخدم صالح لحفظ الإمكانيات."));
+			return;
+		}
+
+		if ($.isEmptyObject(changes)) {
+			if (suppress_empty_message) {
+				return;
+			}
+			frappe.show_alert({
+				message: __("لا توجد تغييرات للحفظ"),
+				indicator: "info",
+			});
+			return;
+		}
+
+		const existing_permissions = frm.__separate_permission_existing || {};
+		const permissions_payload = {};
+		const doctypes = new Set([
+			...Object.keys(existing_permissions),
+			...Object.keys(changes),
+		]);
+
+		doctypes.forEach((doctype_name) => {
+			const merged = { ...existing_permissions[doctype_name], ...changes[doctype_name] };
+			permissions_payload[doctype_name] = perms_order.reduce((acc, perm) => {
+				acc[perm] = merged[perm] ? 1 : 0;
+				return acc;
+			}, {});
+		});
+
+		const response = await frappe.call({
+			method: "frappe.core.doctype.user.user.save_separate_permissions_for_user",
+			args: {
+				user: frm.doc.name,
+				permissions: permissions_payload,
+			},
+		});
+
+		if (response.message) {
+			frappe.show_alert({
+				message: response.message.message || __("تم حفظ الإمكانيات المنفصلة"),
+				indicator: "green",
+			});
+			frm.__separate_permission_changes = {};
+			frm.__separate_permission_existing = permissions_payload;
+			frm.__separate_permission_internal_role = response.message.role || null;
+			frm.events.ensure_separate_permission_role_on_form(
+				frm,
+				frm.__separate_permission_internal_role
+			);
+			if (!skip_form_save && frm.is_dirty()) {
+				await frm.save();
+			}
+			await frm.events.render_separate_permissions_tab(frm);
 		}
 	},
 });
