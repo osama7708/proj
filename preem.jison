@@ -110,6 +110,9 @@
    "api_secret",
    "onboarding_status",
    "connections_tab",
+   "separate_permissions_tab",
+   "save_separate_permissions",
+   "separate_permissions_html",
    "add_permissions_user",
    "btn_save_role",
    "roles_htmll"
@@ -718,6 +721,21 @@
     "fieldtype": "Tab Break",
     "label": "Connections",
     "show_dashboard": 1
+   },
+   {
+    "fieldname": "separate_permissions_tab",
+    "fieldtype": "Tab Break",
+    "label": "الإمكانيات المنفصلة"
+   },
+   {
+    "fieldname": "save_separate_permissions",
+    "fieldtype": "Button",
+    "label": "حفظ الإمكانيات"
+   },
+   {
+    "fieldname": "separate_permissions_html",
+    "fieldtype": "HTML",
+    "label": "Separate Permissions"
    },
    {
     "collapsible": 1,
