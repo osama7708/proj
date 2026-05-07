@@ -1209,6 +1209,115 @@ def get_all_roles():
 	return sorted([role.get("name") for role in roles])
 
 
+def _get_module_component_records(doctype: str, filters: dict, fields: list[str], order_by: str):
+	if not frappe.db.exists("DocType", doctype):
+		return []
+
+	return frappe.get_all(
+		doctype,
+		filters=filters,
+		fields=fields,
+		order_by=order_by,
+		limit_page_length=0,
+	)
+
+
+def _get_workspace_component_details(module_name: str):
+	if not frappe.db.exists("DocType", "Workspace"):
+		return []
+
+	workspaces = frappe.get_all(
+		"Workspace",
+		filters={"module": module_name},
+		fields=["name", "label", "title", "public", "content"],
+		order_by="name asc",
+		limit_page_length=0,
+	)
+
+	workspace_details = []
+	for workspace in workspaces:
+		workspace_doc = frappe.get_doc("Workspace", workspace["name"])
+		content = []
+		try:
+			content = json.loads(workspace.get("content") or "[]")
+		except Exception:
+			content = []
+
+		headers = []
+		shortcuts = []
+		for block in content:
+			block_type = block.get("type")
+			block_data = block.get("data") or {}
+
+			if block_type == "header" and block_data.get("text"):
+				headers.append(block_data.get("text"))
+			elif block_type == "shortcut" and block_data.get("shortcut_name"):
+				shortcuts.append(block_data.get("shortcut_name"))
+
+		links = []
+		for link in workspace_doc.get("links") or []:
+			links.append(
+				{
+					"label": link.label,
+					"link_to": link.link_to,
+					"link_type": link.link_type,
+					"type": link.type,
+				}
+			)
+
+		workspace_details.append(
+			{
+				"name": workspace["name"],
+				"label": workspace.get("label"),
+				"title": workspace.get("title"),
+				"public": workspace.get("public"),
+				"route": f"/app/{workspace['name']}",
+				"headers": headers,
+				"shortcuts": shortcuts,
+				"links": links,
+				"shortcut_count": len(shortcuts),
+				"link_count": len(links),
+			}
+		)
+
+	return workspace_details
+
+
+@frappe.whitelist()
+def get_module_components(module_name: str):
+	module_name = (module_name or "").strip()
+	if not module_name:
+		frappe.throw(_("Module name is required"))
+
+	doctypes = _get_module_component_records(
+		"DocType",
+		{"module": module_name},
+		["name", "istable", "issingle"],
+		"name asc",
+	)
+	reports = _get_module_component_records(
+		"Report",
+		{"module": module_name},
+		["name", "ref_doctype", "report_type"],
+		"name asc",
+	)
+	pages = _get_module_component_records(
+		"Page",
+		{"module": module_name},
+		["name", "title", "standard"],
+		"name asc",
+	)
+	workspaces = _get_workspace_component_details(module_name)
+
+	return {
+		"module_name": module_name,
+		"doctypes": doctypes,
+		"reports": reports,
+		"pages": pages,
+		"workspaces": workspaces,
+	}
+
+
 @frappe.whitelist()
 def get_roles(arg=None):
 	"""get roles for a user"""
