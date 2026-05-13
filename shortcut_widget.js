@@ -1,5 +1,6 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // MIT License. See license.txt
+import "../ui/workspace_tabs";
 
 // page container
 frappe.provide("frappe.pages");
@@ -95,6 +96,7 @@ frappe.views.Container = class  {
 
 		this.ensure_overflow_tabs_button();
 		this.update_workspace_tabs_controls();
+		frappe.ui.workspace_tabs.restoreState();
 	}
 
 	get_hidden_workspace_tabs() {
@@ -315,6 +317,7 @@ frappe.views.Container = class  {
 		topButtons.find(".nav-btn-os").remove();
 		this.hide_workspace_tabs_overflow_menu();
 		this.update_workspace_tabs_controls();
+		frappe.ui.workspace_tabs.persistState();
 	}
 	add_page(label) {
 		var page = $('<div class="content page-container"></div>')
@@ -503,120 +506,49 @@ frappe.views.Container = class  {
 			// $("#page-Workspaces .sub-layout-main-section-wrapper").append($(page).show().addClass(`page-${safe_label}`));
 
 
-			let topLinksContainer = $("#page-Workspaces .layout-main .top-buttons");
 			this.ensure_close_all_tabs_button();
 
 			let status_label = null;
 
 			if (lable_if.includes("List")) {
-				status_label = null;
 				status_label = "List";
-			}else if (lable_if.includes("Report")) {
-				status_label = null;
+			} else if (lable_if.includes("Report")) {
 				status_label = "Report";
-			}else if (lable_if.includes("Dashboard")) {
-				status_label = null;
+			} else if (lable_if.includes("Dashboard")) {
 				status_label = "Dashboard";
 			}
 
 			if (status_label !== null) {
 				display_label = `${__(status_label)} ${__(display_label)}`;
 			}
-			
-			// // التحقق من وجود الرابط مسبقًا
-			if (!topLinksContainer.find(`[data-href='${label}']`).length) {
-				let link = $(`
-					<div data-tap_id=${tap_id} class="nav-btn-os div-${safe_label}" style="padding: 5px 5px 5px 07px; min-width: fit-content; margin-left: 7px; margin-top: 5px; border-radius: 2px 13px 0px 0px; box-shadow: inset -1px 0px 20px 6px hsl(0deg 0% 0% / 36%);">
-						<a class="onboard-spotlight btn-${safe_label}" type="Link" title="${label}" data-href="${label}">
-							
-							${__(display_label)}
-						</a>
-						<a class="close-${safe_label}" style="cursor: pointer;">
-							<svg style="width: 12px;" class="es-icon" aria-hidden="true">
-								<use href="#es-small-close"></use>
-							</svg>
-						</a>
-					</div>
-				`);
-				link.attr("data-tab-label", display_label);
-				link.find('a[data-href], a[type="Link"], .onboard-spotlight').first().attr("data-label", display_label);
-				
-				// ✅ إضافة العنصر إلى القائمة
-				// topLinksContainer.append(link);
-				// topLinksContainer.prepend(link);
 
-				// الكود الجديد  //
-				topLinksContainer = $("#page-Workspaces .layout-main .top-buttons .new_btn_osama");
-				let new_btn = $("#page-Workspaces .layout-main .top-buttons .new_btn");
+			const currentPrimaryRouteKey = frappe.ui.workspace_tabs.getRouteKey();
+			const shouldSkipPrimaryRoute =
+				frappe.ui.workspace_tabs.shouldSkipPrimaryTab(currentPrimaryRouteKey);
 
-				if (topLinksContainer.length) {
-					let i = `${display_label}`;
-					if (i === "Customize Form" || i === "DocType"){
-						let ai = topLinksContainer.attr("data-tap-label");
-						i = `${__(display_label)} ${ai}`;
-					}
-					i = `${__(i)}`;
-					
-					
-					topLinksContainer.append(i);
-					new_btn.removeClass("new_btn");
-					new_btn.removeClass("hide");
-					topLinksContainer.removeClass('new_btn_osama');
-					console.log(`add tixt to btn`);
-				} else if (new_btn.length) {
-					new_btn.removeClass("new_btn");
-					new_btn.removeClass("hide");
-				}
-
-				/////////////////////////////////////////////////
-
-				// topLinksContainer.find(".nav-btn-os").css("background", "#0097a6");
-				// topLinksContainer.find(`.div-${safe_label}`).css("background", "#fafafa");
-				// topLinksContainer.find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-				// topLinksContainer.find(`.btn-${safe_label}`).attr("style", "color: #000 !important;");
-				
-
-				
-				// ✅ ربط الأحداث بعد التحميل الصحيح للصفحة
-				topLinksContainer.on("click", `.btn-${safe_label}`, function (e) {
-					e.preventDefault();
-					
-					// إعادة تعيين الخلفيات
-					topLinksContainer.find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-					$(this).closest(`.btn-${safe_label}`).attr("style", "color: #000 !important;");
-					topLinksContainer.find(".nav-btn-os").css("background", "#0097a6");
-					$(this).closest(".nav-btn-os").css("background", "#fafafa");
-				
-					// إخفاء جميع الصفحات وإظهار الصفحة المطلوبة
-					$(".sub-layout-main-section-wrapper .page-container").hide();
-					$(".sub-layout-main-section-wrapper").find(`.page-${safe_label}`).show();
+			if (!shouldSkipPrimaryRoute) {
+				frappe.ui.workspace_tabs.openPrimaryTab({
+					safeLabel: safe_label,
+					displayLabel: display_label,
+					dataHref: label,
+					routeKey: currentPrimaryRouteKey,
+					pageName: `page-${safe_label}`,
+					name: `page-${safe_label}`,
+					onActivate: () => {
+						$(".sub-layout-main-section-wrapper .page-container").hide();
+						$(".sub-layout-main-section-wrapper").find(`.page-${safe_label}`).show();
+					},
+					onClose: () => {
+						$(document).trigger("page-change");
+						$(".sub-layout-main-section-wrapper .page-container").hide();
+						this.hide_workspace_tabs_overflow_menu();
+						this.update_workspace_tabs_controls();
+					},
+					prepend: false,
 				});
-				
-				$(`.close-${safe_label}`).on("click", () => {
-					$(document).trigger("page-change");
-					// إخفاء الصفحة وحذف العنصر
-					$(".sub-layout-main-section-wrapper .page-container").hide();
-					$('.top-buttons').find(`.div-${safe_label}`).remove();
-					this.hide_workspace_tabs_overflow_menu();
-					this.update_workspace_tabs_controls();
-				});
-				
-
-			} else {
-				let existingTab = topLinksContainer.find(`[data-href='${label}']`).closest(".nav-btn-os");
-				existingTab.attr("data-tab-label", display_label);
-				existingTab.find('a[data-href], a[type="Link"], .onboard-spotlight').first().attr("data-label", display_label);
-				topLinksContainer.find(".nav-btn-os").css("background", "#0097a6");
-				topLinksContainer.find(`.div-${safe_label}`).css("background", "#fafafa");
-				topLinksContainer.find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-				topLinksContainer.find(`.btn-${safe_label}`).attr("style", "color: #000 !important;");
+				frappe.ui.workspace_tabs.consumePendingPrimaryPlaceholder(display_label);
 			}
 
-			// ✅ استخدام on() لربط الأحداث بعد تحميل الصفحة
-			// $(page).appendTo(container).show();
-			
-			// let shoo = container.find(`.page-${label}`).removeClass("hidden");
-			// تحديث عنوان الصفحة بدون تغيير المسار بالكامل
 			document.title = page.label || "Workspaces";
 
 			this.page = page;
@@ -637,6 +569,10 @@ frappe.views.Container = class  {
 			}
 
 			frappe.breadcrumbs.update();
+
+			if (frappe.ui.workspace_tabs.hasPendingSecondaryRoute(currentPrimaryRouteKey)) {
+				frappe.ui.workspace_tabs.clearPendingSecondaryRoute();
+			}
 	
 			return;
 		}
@@ -712,6 +648,7 @@ frappe.views.Container = class  {
 			let b = $("#page-Workspaces .layout-main .sub-layout-main-section-wrapper");
 			b.append(`<div class="top-buttons" style="margin-bottom: 10px; margin-top: 20px; border-radius: 10px 10px 0px 0px; overflow-x: scroll; scrollbar-width: none; display: flex; direction: ltr; background-color: #0097a6; max-width: 100%; width: 100%;"></div>`);
 			this.ensure_close_all_tabs_button();
+			frappe.ui.workspace_tabs.restoreState();
 		}
 
 		/////////////////////////////////////////////////////////////////////
@@ -780,72 +717,40 @@ frappe.views.Container = class  {
 				display_label_s = `${__(status_label_s)} ${__(display_label_s)}`;
 			}
 	
-			let topLinksContainer_s = document.querySelector("#page-Workspaces .layout-main .top-buttons");
-	
-			let add_btn_tap = document.querySelector(".page_not_in_sub_list");
-			if (add_btn_tap){
-				console.log('ddddddddddddddddddd');
-				if (!topLinksContainer_s) {
-					console.log("❌ لم يتم العثور على قائمة الأزرار لإضافة الرابط");
-				} else {
-					let existingLink = topLinksContainer_s.querySelector(`[data-href='${data_h}']`);
-					if (!existingLink) {
-						let link = document.createElement("div");
-						link.setAttribute("data-tap_id", zip_label_s);
-						link.setAttribute("data-tab-label", display_label_s);
-						link.className = `nav-btn-os div-${safe_label_s}`;
-						link.style = "padding: 5px 5px 5px 7px; min-width: fit-content; margin-left: 7px; margin-top: 5px; border-radius: 2px 13px 0px 0px; box-shadow: rgba(0, 0, 0, 0.36) -1px 0px 20px 6px inset; background: rgb(250, 250, 250);";
-		
-						let anchor = document.createElement("a");
-						anchor.className = `onboard-spotlight btn-${safe_label_s}`;
-						anchor.setAttribute("type", "Link");
-						anchor.setAttribute("title", data_h);
-						anchor.setAttribute("data-href", data_h);
-						anchor.setAttribute("data-label", display_label_s);
-						anchor.style = "color: #000 !important;";
-						anchor.textContent = __(display_label_s);
-		
-						let closeIcon = document.createElement("a");
-						closeIcon.className = `close-${safe_label_s}`;
-						closeIcon.style = "cursor: pointer;";
-						closeIcon.innerHTML = `<svg style="width: 12px;" class="es-icon" aria-hidden="true"><use href="#es-small-close"></use></svg>`;
-		
-						link.appendChild(anchor);
-						link.appendChild(closeIcon);
-						topLinksContainer_s.appendChild(link);
+			const currentRouteKey = frappe.ui.workspace_tabs.getRouteKey();
+			const hasPendingSecondaryRoute =
+				frappe.ui.workspace_tabs.hasPendingSecondaryRoute(currentRouteKey);
+			const shouldSkipPrimaryRoute =
+				frappe.ui.workspace_tabs.shouldSkipPrimaryTab(currentRouteKey);
+
+			if (
+				document.querySelector(".page_not_in_sub_list") &&
+				!shouldSkipPrimaryRoute
+			) {
+				frappe.ui.workspace_tabs.openPrimaryTab({
+					safeLabel: safe_label_s,
+					displayLabel: display_label_s,
+					dataHref: data_h,
+					routeKey: currentRouteKey,
+					pageName: `page-${safe_label_s}`,
+					name: `page-${safe_label_s}`,
+					onActivate: () => {
+						$(".sub-layout-main-section-wrapper .page-container").hide();
+						$(`.sub-layout-main-section-wrapper .page-${safe_label_s}`).show();
+					},
+					onClose: () => {
+						$(`.sub-layout-main-section-wrapper .page-${safe_label_s}`).removeClass(`page_not_in_sub_list`);
+						$(".sub-layout-main-section-wrapper .page-container").hide();
 						this.hide_workspace_tabs_overflow_menu();
 						this.update_workspace_tabs_controls();
-		
-						console.log(`✅ تمت إضافة الرابط: ${display_label_s}`);
-					} else {
-						console.log(`⚠️ الرابط موجود بالفعل: ${display_label_s}`);
-					}
-				}
+					},
+					prepend: false,
+				});
 			}
-	
-			$(`.close-${safe_label_s}`).on("click", () => {
-				$(`.sub-layout-main-section-wrapper .page-${safe_label_s}`).removeClass(`page_not_in_sub_list`);
-				// إخفاء الصفحة وحذف العنصر
-				$(".sub-layout-main-section-wrapper .page-container").hide();
-				$('.top-buttons').find(`.div-${safe_label_s}`).remove();
-				this.hide_workspace_tabs_overflow_menu();
-				this.update_workspace_tabs_controls();
-			});
-	
-			$(`.btn-${safe_label_s}`).on("click", () => {
-				$(".sub-layout-main-section-wrapper .page-container").hide();
-				
-				console.log(`⚠️ تمت عمليت النقر  : ${display_label_s}`);
-				// إعادة تعيين الخلفيات
-				$('.top-buttons').find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-				$('.top-buttons').find(`.btn-${safe_label_s}`).attr("style", "color: #000 !important;");
-				$('.top-buttons').find(".nav-btn-os").css("background", "#0097a6");
-				$('.top-buttons').find(`.div-${safe_label_s}`).css("background", "#fafafa");
-			
-				
-				$(`.sub-layout-main-section-wrapper .page-${safe_label_s}`).show();
-			});
 
+			if (hasPendingSecondaryPrimaryRoute || hasPendingSecondaryRoute) {
+				frappe.ui.workspace_tabs.clearPendingSecondaryRoute();
+			}
 
 			targetWrapper.appendChild(elementWithoutWrapper);
 			console.log(`✅ تم نقل العنصر بنجاح داخل .sub-layout-main-section-wrapper ${label}`);
