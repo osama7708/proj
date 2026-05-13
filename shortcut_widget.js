@@ -1,5 +1,6 @@
 import "./field_group";
 import "../dom";
+import "./workspace_tabs";
 
 frappe.provide("frappe.ui");
 
@@ -15,12 +16,7 @@ frappe.ui.Dialog = class Dialog extends frappe.ui.FieldGroup {
 
 		// حذف زر التاب الخاص بل دايلوج  //
 
-		let topLinksContainer = $("#page-Workspaces .layout-main .top-buttons .new_btn");
-
-		if (topLinksContainer.length) {
-			topLinksContainer.remove();
-			console.log(`remove btn tap dilog`);
-		}
+		frappe.ui.workspace_tabs.removePendingNewButtons();
 
 		/////////////////////////////////////////////
 
