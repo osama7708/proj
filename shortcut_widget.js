@@ -1,5 +1,6 @@
 import BulkOperations from "./bulk_operations";
 import ListSettings from "./list_settings";
+import "../ui/workspace_tabs";
 
 frappe.provide("frappe.views");
 
@@ -1287,95 +1288,18 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			// link, let the event be handled via set_route
 			// if ($target.is("a")) return;
 			if ($target.is("a")){
-				console.log("click <a></a>");
-				let mainTitle = $target[0].dataset.name;
-				let mainLabel = mainTitle.replace(/ /g, "-");
-
-				let parent_name = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`).attr("name");
-				let link_osama = $(`
-					<div page="page-sh-${mainLabel}" parent-name="${parent_name}" class="nav-btn-os new_btn div-${mainLabel}">
-						<a data-tap-label="${this.title}" href="${$target[0].href}" class="btn-${mainLabel}" type="Link" title="${mainLabel}" data-href="${mainLabel}">
-							${__(mainTitle)}
-						</a>
-						<a class="close-btn-top close-sub">
-							<svg style="width: 12px;" class="es-icon" aria-hidden="true">
-								<use href="#es-small-close"></use>
-							</svg>
-						</a>
-					</div>
-				`);
-
-				link_osama.find(".close-sub").click((e) => {
-					link_osama.remove();
-					let btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-					if (btn_page.find(`.page-sh-${mainLabel}`).length){
-						console.log("true");
-						btn_page = $(`#page-Workspaces .sub-layout-main-section-wrapper .page-sh-${mainLabel}`).attr('page-name-cl');
-						if (btn_page === `page-sh-${mainLabel}`){
-							btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-							btn_page.find(`.page-sh-${mainLabel}`).hide();
-						}
-					} else {
-						console.log("false");
-					}
+				const mainTitle = $target[0].dataset.name;
+				const mainLabel = mainTitle.replace(/ /g, "-");
+				const routeKey = $target[0].pathname;
+				frappe.ui.workspace_tabs.setPendingSecondaryRoute(routeKey);
+				frappe.ui.workspace_tabs.openSecondaryTab({
+					mainTitle,
+					mainLabel,
+					routeKey,
+					pageName: `page-sh-${mainLabel}`,
+					onActivate: () => frappe.set_route($target[0].pathname),
+					onClose: () => frappe.ui.workspace_tabs.closePageByClass(`page-sh-${mainLabel}`),
 				});
-	
-				let topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .ulSitBtn`);
-				if (!topLinksContainer.find(`[data-href='${mainLabel}']`).length) {
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					link_osama.addClass("active_sup_btn_top");
-
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`);
-					let text_label = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`);
-					$(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`).find('.text-label').remove();
-					const text = document.createElement('span');
-					text.className = 'text-label';
-					text.innerHTML = `${__(mainTitle)}`;
-					text.style.cssText = 'font-size: 10px; font-weight: 700;';
-					text_label.append(text);
-
-					topLinksContainer.find(".btn-top-op").removeClass("hidden");
-					topLinksContainer.find(".ulSitBtn").prepend(link_osama);
-				} else {
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					topLinksContainer.find(`.div-${mainLabel}`).addClass("active_sup_btn_top");
-
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`);
-					let text_label = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`);
-					$(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`).find('.text-label').remove();
-					const text = document.createElement('span');
-					text.className = 'text-label';
-					text.innerHTML = `${__(mainTitle)}`;
-					text.style.cssText = 'font-size: 10px; font-weight: 700;';
-					text_label.append(text);
-				}
-
-				link_osama.click((e) => {
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons`);
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					link_osama.addClass("active_sup_btn_top");
-
-					topLinksContainer.find(`.active_btn_top`).removeClass("active_btn_top");
-					topLinksContainer.find(`[name='${parent_name}']`).addClass("active_btn_top");
-
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`);
-					let text_label = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`);
-					$(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`).find('.text-label').remove();
-					const text = document.createElement('span');
-					text.className = 'text-label';
-					text.innerHTML = `${__(mainTitle)}`;
-					text.style.cssText = 'font-size: 10px; font-weight: 700;';
-					text_label.append(text);
-
-					// return;
-				});
-				console.log(`click 6.1`);
-
-				//////////////////////////////////
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${$target[0].dataset.name}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${$target[0].href}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${$target[0].title}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${$target[0].textContent}`);
 				return;
 			}
 
@@ -1388,97 +1312,18 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			// }
 
 			if (link) {
-				
-				let mainTitle = link.dataset.name;
-				let mainLabel = mainTitle.replace(/ /g, "-");
-
-				let parent_name = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`).attr("name");
-				let link_osama = $(`
-					<div page="page-sh-${mainLabel}" parent-name="${parent_name}" class="nav-btn-os new_btn div-${mainLabel}">
-						<a data-tap-label="${this.title}" class="btn-${mainLabel}" type="Link" title="${mainLabel}" data-href="${mainLabel}">
-							${__(mainTitle)}
-						</a>
-						<a class="close-btn-top close-sub">
-							<svg style="width: 12px;" class="es-icon" aria-hidden="true">
-								<use href="#es-small-close"></use>
-							</svg>
-						</a>
-					</div>
-				`);
-
-				link_osama.find(".close-sub").click((e) => {
-					link_osama.remove();
-					let btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-					if (btn_page.find(`.page-sh-${mainLabel}`).length){
-						console.log("true");
-						btn_page = $(`#page-Workspaces .sub-layout-main-section-wrapper .page-sh-${mainLabel}`).attr('page-name-cl');
-						if (btn_page === `page-sh-${mainLabel}`){
-							btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-							btn_page.find(`.page-sh-${mainLabel}`).hide();
-						}
-					} else {
-						console.log("false");
-					}
+				const mainTitle = link.dataset.name;
+				const mainLabel = mainTitle.replace(/ /g, "-");
+				const routeKey = link.pathname;
+				frappe.ui.workspace_tabs.setPendingSecondaryRoute(routeKey);
+				frappe.ui.workspace_tabs.openSecondaryTab({
+					mainTitle,
+					mainLabel,
+					routeKey,
+					pageName: `page-sh-${mainLabel}`,
+					onActivate: () => frappe.set_route(link.pathname),
+					onClose: () => frappe.ui.workspace_tabs.closePageByClass(`page-sh-${mainLabel}`),
 				});
-	
-				let topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .ulSitBtn`);
-				if (!topLinksContainer.find(`[data-href='${mainLabel}']`).length) {
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					link_osama.addClass("active_sup_btn_top");
-
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`);
-					let text_label = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`);
-					$(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`).find('.text-label').remove();
-					const text = document.createElement('span');
-					text.className = 'text-label';
-					text.innerHTML = `${__(mainTitle)}`;
-					text.style.cssText = 'font-size: 10px; font-weight: 700;';
-					text_label.append(text);
-
-					topLinksContainer.find(".btn-top-op").removeClass("hidden");
-					topLinksContainer.find(".ulSitBtn").prepend(link_osama);
-				} else {
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					topLinksContainer.find(`.div-${mainLabel}`).addClass("active_sup_btn_top");
-
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`);
-					let text_label = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`);
-					$(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`).find('.text-label').remove();
-					const text = document.createElement('span');
-					text.className = 'text-label';
-					text.innerHTML = `${__(mainTitle)}`;
-					text.style.cssText = 'font-size: 10px; font-weight: 700;';
-					text_label.append(text);
-				}
-
-				link_osama.click((e) => {
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons`);
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					link_osama.addClass("active_sup_btn_top");
-
-					topLinksContainer.find(`.active_btn_top`).removeClass("active_btn_top");
-					topLinksContainer.find(`[name='${parent_name}']`).addClass("active_btn_top");
-
-					topLinksContainer = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top`);
-					let text_label = $(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`);
-					$(`#page-Workspaces .layout-main .top-buttons .active_btn_top .btn-top-op`).find('.text-label').remove();
-					const text = document.createElement('span');
-					text.className = 'text-label';
-					text.innerHTML = `${__(mainTitle)}`;
-					text.style.cssText = 'font-size: 10px; font-weight: 700;';
-					text_label.append(text);
-
-					frappe.set_route(link.pathname);
-					return false;
-				});
-				console.log(`click 6`);
-
-				//////////////////////////////////
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${link.title}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${link.dataset.name}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${link.href}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${link.title}`);
-				console.log(`nnnnnnnnnnnnnnnnnnnnnn ${link.textContent}`);
 				frappe.set_route(link.pathname);
 				return false;
 			}
