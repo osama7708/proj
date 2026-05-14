@@ -1,4 +1,5 @@
 import Widget from "./base_widget.js";
+import { workspaceTabs } from "../ui/workspace_tabs.js";
 
 frappe.provide("frappe.utils");
 
@@ -136,101 +137,12 @@ export default class ShortcutWidget extends Widget {
 					return word.charAt(0).toLowerCase() +
 					word.slice(1).toLowerCase();}).join(' ');
 				
-				let topLinksContainer = $("#page-Workspaces .layout-main .top-buttons");
-				if (!topLinksContainer.find(`[data-href='${safe_label}']`).length) {
-					let link = $(`
-						<div page="page-pa-${safe_label}" sup-name="null" name="pa-${app}" class="nav-btn-os div-${safe_label}">
-							<div style="display: inline-flex;">
-								<button style="vertical-align: text-bottom; padding: 0px; border: 0; background: #ffffff00; margin: 0px;" class="btn-top-op hidden">
-									<svg class="es-icon es-line  icon-sm" style="stroke: #000000 !important;" aria-hidden="true">
-										<use class="" href="#es-line-down"></use>
-									</svg>
-								</button>
-								<a class="cl-btn btn-${safe_label}" type="Link" data-href="${safe_label}">
-									${__(display_label)}
-								</a>
-								<a class="close-${safe_label} close-all" style="cursor: pointer;">
-									<svg style="width: 12px;" class="es-icon" aria-hidden="true">
-										<use href="#es-small-close"></use>
-									</svg>
-								</a>
-							</div>
-							<div style="position: absolute; z-index: 6800; background: #006d77;
-										width: max-content; text-align: -webkit-center; background: #fafafa;
-										padding: 6px; border-bottom: solid #ff9800 2px; border-top: solid #0097a6 2px;" class="ulSitBtn hidden ul-${__(app)}">
-							</div>
-						</div>
-					`);
-	
-					link.find(".close-all").click((e) => {
-						link.remove();
-						let btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-						if (btn_page.find(`.page-pa-${safe_label}`).length){
-							console.log("true");
-							btn_page = $(`#page-Workspaces .sub-layout-main-section-wrapper .page-pa-${safe_label}`).attr('page-name-cl');
-							if (btn_page === `page-pa-${safe_label}`){
-								btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-								btn_page.find(`.page-pa-${safe_label}`).hide();
-							}
-						} else {
-							console.log("false");
-						}
-					});
-		
-					link.find(".cl-btn").click((e) => {
-						topLinksContainer.find(".nav-btn-os").removeClass("active_btn_top");
-						topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-						link.attr("sup-name" , 'null');
-						link.addClass("active_btn_top");
-						frappe.set_route(route);
-					});
-	
-					link.find(".btn-top-op").click((e) => {
-						link.find(`.ulSitBtn`).toggleClass("hidden");
-					});
-	
-					link.find(".ulSitBtn").hover(
-						function () {
-							link.find(`.ulSitBtn`).removeClass("hidden");
-						},
-						function () {
-							link.find(`.ulSitBtn`).addClass("hidden");
-						}
-					);
-		
-					topLinksContainer.find(".nav-btn-os").removeClass("active_btn_top");
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					link.addClass("active_btn_top");
-					topLinksContainer.prepend(link);
-					if (window.matchMedia("(max-width: 991px)").matches) {
-						if ($("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display") === "none") {
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "block");
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "flex");
-						} else {
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "none");
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "none");
-						}
-					
-						let mainsidebar = $('#page-Workspaces .page-body .page-wrapper .page-content .layout-main');
-						mainsidebar.find(".layout-main-section-wrapper").toggleClass("opened");
-					}
-				} else {
-					topLinksContainer.find(".nav-btn-os").removeClass("active_btn_top");
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					topLinksContainer.find(`.div-${safe_label}`).addClass("active_btn_top");
-					if (window.matchMedia("(max-width: 991px)").matches) {
-						if ($("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display") === "none") {
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "block");
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "flex");
-						} else {
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "none");
-							$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "none");
-						}
-					
-						let mainsidebar = $('#page-Workspaces .page-body .page-wrapper .page-content .layout-main');
-						mainsidebar.find(".layout-main-section-wrapper").toggleClass("opened");
-					}
-				}
+				workspaceTabs.openOrActivatePrimaryTab({
+					safeLabel: safe_label,
+					displayLabel: display_label,
+					app,
+					route,
+				});
 	
 	
 				//////////////////////////////////////////////////////////////////////////////
@@ -341,101 +253,12 @@ export default class ShortcutWidget extends Widget {
 				return word.charAt(0).toLowerCase() +
 				word.slice(1).toLowerCase();}).join(' ');
 			
-			let topLinksContainer = $("#page-Workspaces .layout-main .top-buttons");
-			if (!topLinksContainer.find(`[data-href='${safe_label}']`).length) {
-				let link = $(`
-					<div page="page-pa-${safe_label}" sup-name="null" name="pa-${app}" class="nav-btn-os div-${safe_label}">
-						<div style="display: inline-flex;">
-							<button style="vertical-align: text-bottom; padding: 0px; border: 0; background: #ffffff00; margin: 0px;" class="btn-top-op hidden">
-								<svg class="es-icon es-line  icon-sm" style="stroke: #000000 !important;" aria-hidden="true">
-									<use class="" href="#es-line-down"></use>
-								</svg>
-							</button>
-							<a class="cl-btn btn-${safe_label}" type="Link" data-href="${safe_label}">
-								${__(display_label)}
-							</a>
-							<a class="close-${safe_label} close-all" style="cursor: pointer;">
-								<svg style="width: 12px;" class="es-icon" aria-hidden="true">
-									<use href="#es-small-close"></use>
-								</svg>
-							</a>
-						</div>
-						<div style="position: absolute; z-index: 6800; background: #006d77;
-									width: max-content; text-align: -webkit-center; background: #fafafa;
-									padding: 6px; border-bottom: solid #ff9800 2px; border-top: solid #0097a6 2px;" class="ulSitBtn hidden ul-${__(app)}">
-						</div>
-					</div>
-				`);
-
-				link.find(".close-all").click((e) => {
-					link.remove();
-					let btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-					if (btn_page.find(`.page-pa-${safe_label}`).length){
-						console.log("true");
-						btn_page = $(`#page-Workspaces .sub-layout-main-section-wrapper .page-pa-${safe_label}`).attr('page-name-cl');
-						if (btn_page === `page-pa-${safe_label}`){
-							btn_page = $('#page-Workspaces .sub-layout-main-section-wrapper');
-							btn_page.find(`.page-pa-${safe_label}`).hide();
-						}
-					} else {
-						console.log("false");
-					}
-				});
-	
-				link.find(".cl-btn").click((e) => {
-					topLinksContainer.find(".nav-btn-os").removeClass("active_btn_top");
-					topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-					link.attr("sup-name" , 'null');
-					link.addClass("active_btn_top");
-					frappe.set_route(route);
-				});
-
-				link.find(".btn-top-op").click((e) => {
-					link.find(`.ulSitBtn`).toggleClass("hidden");
-				});
-
-				link.find(".ulSitBtn").hover(
-					function () {
-						link.find(`.ulSitBtn`).removeClass("hidden");
-					},
-					function () {
-						link.find(`.ulSitBtn`).addClass("hidden");
-					}
-				);
-	
-				topLinksContainer.find(".nav-btn-os").removeClass("active_btn_top");
-				topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-				link.addClass("active_btn_top");
-				topLinksContainer.prepend(link);
-				if (window.matchMedia("(max-width: 991px)").matches) {
-					if ($("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display") === "none") {
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "block");
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "flex");
-					} else {
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "none");
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "none");
-					}
-				
-					let mainsidebar = $('#page-Workspaces .page-body .page-wrapper .page-content .layout-main');
-					mainsidebar.find(".layout-main-section-wrapper").toggleClass("opened");
-				}
-			} else {
-				topLinksContainer.find(".nav-btn-os").removeClass("active_btn_top");
-				topLinksContainer.find(".nav-btn-os").removeClass("active_sup_btn_top");
-				topLinksContainer.find(`.div-${safe_label}`).addClass("active_btn_top");
-				if (window.matchMedia("(max-width: 991px)").matches) {
-					if ($("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display") === "none") {
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "block");
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "flex");
-					} else {
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .main-side").css("display", "none");
-						$("#page-Workspaces .page-body .page-wrapper .page-content .layout-main .lay_sid_pare").css("display", "none");
-					}
-				
-					let mainsidebar = $('#page-Workspaces .page-body .page-wrapper .page-content .layout-main');
-					mainsidebar.find(".layout-main-section-wrapper").toggleClass("opened");
-				}
-			}
+			workspaceTabs.openOrActivatePrimaryTab({
+				safeLabel: safe_label,
+				displayLabel: display_label,
+				app,
+				route,
+			});
 
 
 			//////////////////////////////////////////////////////////////////////////////
