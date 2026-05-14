@@ -3,6 +3,50 @@ import { workspaceTabs } from "../ui/workspace_tabs.js";
 
 frappe.provide("frappe.utils");
 
+function detectShortcutOpenTarget({ route, type, routeName, linkTo, refDoctype, isQueryReport, url }) {
+	const normalizedRoute = `${route || ""}`.toLowerCase();
+	const normalizedType = `${type || ""}`.toLowerCase();
+
+	let targetKind = "Unknown";
+
+	if (normalizedType === "url" || url) {
+		targetKind = "URL";
+	} else if (normalizedRoute.includes("/query-report/") || isQueryReport) {
+		targetKind = "Query Report";
+	} else if (normalizedRoute.includes("/report/")) {
+		targetKind = "Report";
+	} else if (normalizedRoute.includes("/dashboard-view/") || normalizedRoute.includes("/dashboard/")) {
+		targetKind = "Dashboard";
+	} else if (normalizedType === "doctype") {
+		if (normalizedRoute.includes("/view/list") || normalizedRoute.includes("/list/")) {
+			targetKind = "DocType List";
+		} else if (normalizedRoute.includes("/new")) {
+			targetKind = "DocType New";
+		} else {
+			targetKind = "DocType";
+		}
+	} else if (normalizedType === "page") {
+		targetKind = "Page";
+	} else if (normalizedType === "workspace") {
+		targetKind = "Workspace";
+	} else if (routeName) {
+		targetKind = `${routeName}`;
+	}
+
+	console.log("[workspace-tabs] target classification", {
+		targetKind,
+		type: type || null,
+		route: route || null,
+		routeName: routeName || null,
+		linkTo: linkTo || null,
+		refDoctype: refDoctype || null,
+		isQueryReport: !!isQueryReport,
+		url: url || null,
+	});
+
+	return targetKind;
+}
+
 export default class ShortcutWidget extends Widget {
 	constructor(opts) {
 		opts.shadow = true;
@@ -136,6 +180,16 @@ export default class ShortcutWidget extends Widget {
 				safe_label = safe_label.split(' ').map(word => {
 					return word.charAt(0).toLowerCase() +
 					word.slice(1).toLowerCase();}).join(' ');
+
+				detectShortcutOpenTarget({
+					route,
+					type: this.type,
+					routeName: this.route,
+					linkTo: this.link_to,
+					refDoctype: this.ref_doctype,
+					isQueryReport: this.is_query_report,
+					url: this.url,
+				});
 				
 				workspaceTabs.openOrActivatePrimaryTab({
 					safeLabel: safe_label,
@@ -252,6 +306,16 @@ export default class ShortcutWidget extends Widget {
 			safe_label = safe_label.split(' ').map(word => {
 				return word.charAt(0).toLowerCase() +
 				word.slice(1).toLowerCase();}).join(' ');
+
+			detectShortcutOpenTarget({
+				route,
+				type: this.type,
+				routeName: this.route,
+				linkTo: this.link_to,
+				refDoctype: this.ref_doctype,
+				isQueryReport: this.is_query_report,
+				url: this.url,
+			});
 			
 			workspaceTabs.openOrActivatePrimaryTab({
 				safeLabel: safe_label,
