@@ -393,15 +393,7 @@ frappe.views.Container = class  {
 			console.log(`🔄 تغيير محتوى #page-Workspaces: ${label}`);
 
 			
-			// container.find(".page-container").addClass(`page-${label}`);
-			// $("#page-Workspaces .sub-layout-main-section-wrapper .page-container").removeClass(`sub-layout-main-section-wrapper`);
-			// إضافة الصفحة الجديدة داخل Workspaces
-			let tap_id = label.replace(/\/?Dashboard\/?/, "").replace(/\/?Report\/?/, "").replace(/\/?List\/?/g, "").replace(/[ /]/g, "-").replace(/-/g, " ");
-			let safe_label = label.replace(/[ /]/g, "-");
-			let display_label = label.replace(/\/?List\/?/g, "").replace(/\/?Report\/?/, "").replace(/\/?Dashboard\/?/, "").replace(/\//g, " ");
-			let lable_if = label.replace(/\/?List\/?/, "");
-			// let display_label = label.replace(/\/?List\/?/, "").replace(/\/?Report\/?/, "").replace(/\/?Dashboard\/?/, "").replace(/\//g, " ");
-			// let display_label = label.replace(/\/?List\/?/g, "").replace(/\//g, " ");
+			
 			let page_btn_status = $(`#page-Workspaces .layout-main .top-buttons`);
 			let page_name = null;
 			if (page_btn_status.find(`.active_sup_btn_top`).length){
@@ -502,115 +494,6 @@ frappe.views.Container = class  {
 			// $("#page-Workspaces .sub-layout-main-section-wrapper").append($(page).show().addClass(`${page_name}`));
 			// $("#page-Workspaces .sub-layout-main-section-wrapper").append($(page).show().addClass(`page-${safe_label}`));
 
-
-			let topLinksContainer = $("#page-Workspaces .layout-main .top-buttons");
-			this.ensure_close_all_tabs_button();
-
-			let status_label = null;
-
-			if (lable_if.includes("List")) {
-				status_label = null;
-				status_label = "List";
-			}else if (lable_if.includes("Report")) {
-				status_label = null;
-				status_label = "Report";
-			}else if (lable_if.includes("Dashboard")) {
-				status_label = null;
-				status_label = "Dashboard";
-			}
-
-			if (status_label !== null) {
-				display_label = `${__(status_label)} ${__(display_label)}`;
-			}
-			
-			// // التحقق من وجود الرابط مسبقًا
-			if (!topLinksContainer.find(`[data-href='${label}']`).length) {
-				let link = $(`
-					<div data-tap_id=${tap_id} class="nav-btn-os div-${safe_label}" style="padding: 5px 5px 5px 07px; min-width: fit-content; margin-left: 7px; margin-top: 5px; border-radius: 2px 13px 0px 0px; box-shadow: inset -1px 0px 20px 6px hsl(0deg 0% 0% / 36%);">
-						<a class="onboard-spotlight btn-${safe_label}" type="Link" title="${label}" data-href="${label}">
-							
-							${__(display_label)}
-						</a>
-						<a class="close-${safe_label}" style="cursor: pointer;">
-							<svg style="width: 12px;" class="es-icon" aria-hidden="true">
-								<use href="#es-small-close"></use>
-							</svg>
-						</a>
-					</div>
-				`);
-				link.attr("data-tab-label", display_label);
-				link.find('a[data-href], a[type="Link"], .onboard-spotlight').first().attr("data-label", display_label);
-				
-				// ✅ إضافة العنصر إلى القائمة
-				// topLinksContainer.append(link);
-				// topLinksContainer.prepend(link);
-
-				// الكود الجديد  //
-				topLinksContainer = $("#page-Workspaces .layout-main .top-buttons .new_btn_osama");
-				let new_btn = $("#page-Workspaces .layout-main .top-buttons .new_btn");
-
-				if (topLinksContainer.length) {
-					let i = `${display_label}`;
-					if (i === "Customize Form" || i === "DocType"){
-						let ai = topLinksContainer.attr("data-tap-label");
-						i = `${__(display_label)} ${ai}`;
-					}
-					i = `${__(i)}`;
-					
-					
-					topLinksContainer.append(i);
-					new_btn.removeClass("new_btn");
-					new_btn.removeClass("hide");
-					topLinksContainer.removeClass('new_btn_osama');
-					console.log(`add tixt to btn`);
-				} else if (new_btn.length) {
-					new_btn.removeClass("new_btn");
-					new_btn.removeClass("hide");
-				}
-
-				/////////////////////////////////////////////////
-
-				// topLinksContainer.find(".nav-btn-os").css("background", "#0097a6");
-				// topLinksContainer.find(`.div-${safe_label}`).css("background", "#fafafa");
-				// topLinksContainer.find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-				// topLinksContainer.find(`.btn-${safe_label}`).attr("style", "color: #000 !important;");
-				
-
-				
-				// ✅ ربط الأحداث بعد التحميل الصحيح للصفحة
-				topLinksContainer.on("click", `.btn-${safe_label}`, function (e) {
-					e.preventDefault();
-					
-					// إعادة تعيين الخلفيات
-					topLinksContainer.find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-					$(this).closest(`.btn-${safe_label}`).attr("style", "color: #000 !important;");
-					topLinksContainer.find(".nav-btn-os").css("background", "#0097a6");
-					$(this).closest(".nav-btn-os").css("background", "#fafafa");
-				
-					// إخفاء جميع الصفحات وإظهار الصفحة المطلوبة
-					$(".sub-layout-main-section-wrapper .page-container").hide();
-					$(".sub-layout-main-section-wrapper").find(`.page-${safe_label}`).show();
-				});
-				
-				$(`.close-${safe_label}`).on("click", () => {
-					$(document).trigger("page-change");
-					// إخفاء الصفحة وحذف العنصر
-					$(".sub-layout-main-section-wrapper .page-container").hide();
-					$('.top-buttons').find(`.div-${safe_label}`).remove();
-					this.hide_workspace_tabs_overflow_menu();
-					this.update_workspace_tabs_controls();
-				});
-				
-
-			} else {
-				let existingTab = topLinksContainer.find(`[data-href='${label}']`).closest(".nav-btn-os");
-				existingTab.attr("data-tab-label", display_label);
-				existingTab.find('a[data-href], a[type="Link"], .onboard-spotlight').first().attr("data-label", display_label);
-				topLinksContainer.find(".nav-btn-os").css("background", "#0097a6");
-				topLinksContainer.find(`.div-${safe_label}`).css("background", "#fafafa");
-				topLinksContainer.find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-				topLinksContainer.find(`.btn-${safe_label}`).attr("style", "color: #000 !important;");
-			}
 
 			// ✅ استخدام on() لربط الأحداث بعد تحميل الصفحة
 			// $(page).appendTo(container).show();
@@ -715,10 +598,9 @@ frappe.views.Container = class  {
 		}
 
 		/////////////////////////////////////////////////////////////////////
-		let err_page = document.getElementsByClassName("page_not_in_sub_list");
-		if (err_page){
-			let elements = document.getElementsByClassName("page-container");
-			let targetWrapper = document.getElementsByClassName("sub-layout-main-section-wrapper")[0];
+		let targetWrapper = document.getElementsByClassName("sub-layout-main-section-wrapper")[0];
+		let err_page = Array.from(document.getElementsByClassName("page_not_in_sub_list"));
+		if (err_page.length){
 	
 	
 			if (!targetWrapper) {
@@ -733,123 +615,32 @@ frappe.views.Container = class  {
 			} else {
 				console.log(`✅ تم العثور على العنصر المستهدف: .sub-layout-main-section-wrapper ${label}`);
 			}
-	
-			if (elements.length === 0) {
-				console.log("❌ لم يتم العثور على أي عناصر 'page-container'");
-				return;
+
+			let detachedPages = err_page.filter((element) => !targetWrapper.contains(element));
+			let detachedPageElement = detachedPages.find((element) => element === page) || detachedPages[0];
+
+			if (!detachedPageElement) {
+				console.log(`No detached page found for workspace wrapper ${label}`);
+				return this.page;
 			}
-	
-			// البحث عن أول عنصر لا يحتوي على .sub-layout-main-section-wrapper
-			let elementWithoutWrapper = Array.from(elements).find(element =>
-				!element.querySelector('.sub-layout-main-section-wrapper')
-			);
-	
-			if (!elementWithoutWrapper) {
-				console.log(`❌ لم يتم العثور على أي عنصر 'page-container' يحتاج إلى نقل`);
-				return;
-			}
-	
-			let elementId = elementWithoutWrapper.id || "بدون ID";
-	
-			// تحديد حالة العنصر إذا كان List, Report, أو Dashboard
-			let status_label_s = null;
-			if (elementId.includes("List")) {
-				status_label_s = "List";
-			} else if (elementId.includes("Report")) {
-				status_label_s = "Report";
-			} else if (elementId.includes("Dashboard")) {
-				status_label_s = "Dashboard";
-			}
-	
-			let zip_label_s = elementId.replace(/\/?Dashboard\/?/, "")
-				.replace(/^page-/, "")
-				.replace(/\/?Report\/?/, "")
-				.replace(/\/?List\/?/g, "")
-				.replace(/[ /]/g, "-")
-				.replace(/-/g, " ");
-			let safe_label_s = elementId.replace(/[ /]/g, "-").replace(/^page-/, "");
-			let data_h = elementId.replace(/^page-/, "");
-	
-			let display_label_s = elementId.replace(/\/?List\/?/g, "")
-				.replace(/\/?Report\/?/, "")
-				.replace(/\/?Dashboard\/?/, "")
-				.replace(/\//g, " ")
-				.replace(/^page-/, "");
-	
-			if (status_label_s !== null) {
-				display_label_s = `${__(status_label_s)} ${__(display_label_s)}`;
-			}
-	
-			let topLinksContainer_s = document.querySelector("#page-Workspaces .layout-main .top-buttons");
-	
-			let add_btn_tap = document.querySelector(".page_not_in_sub_list");
-			if (add_btn_tap){
-				console.log('ddddddddddddddddddd');
-				if (!topLinksContainer_s) {
-					console.log("❌ لم يتم العثور على قائمة الأزرار لإضافة الرابط");
-				} else {
-					let existingLink = topLinksContainer_s.querySelector(`[data-href='${data_h}']`);
-					if (!existingLink) {
-						let link = document.createElement("div");
-						link.setAttribute("data-tap_id", zip_label_s);
-						link.setAttribute("data-tab-label", display_label_s);
-						link.className = `nav-btn-os div-${safe_label_s}`;
-						link.style = "padding: 5px 5px 5px 7px; min-width: fit-content; margin-left: 7px; margin-top: 5px; border-radius: 2px 13px 0px 0px; box-shadow: rgba(0, 0, 0, 0.36) -1px 0px 20px 6px inset; background: rgb(250, 250, 250);";
-		
-						let anchor = document.createElement("a");
-						anchor.className = `onboard-spotlight btn-${safe_label_s}`;
-						anchor.setAttribute("type", "Link");
-						anchor.setAttribute("title", data_h);
-						anchor.setAttribute("data-href", data_h);
-						anchor.setAttribute("data-label", display_label_s);
-						anchor.style = "color: #000 !important;";
-						anchor.textContent = __(display_label_s);
-		
-						let closeIcon = document.createElement("a");
-						closeIcon.className = `close-${safe_label_s}`;
-						closeIcon.style = "cursor: pointer;";
-						closeIcon.innerHTML = `<svg style="width: 12px;" class="es-icon" aria-hidden="true"><use href="#es-small-close"></use></svg>`;
-		
-						link.appendChild(anchor);
-						link.appendChild(closeIcon);
-						topLinksContainer_s.appendChild(link);
-						this.hide_workspace_tabs_overflow_menu();
-						this.update_workspace_tabs_controls();
-		
-						console.log(`✅ تمت إضافة الرابط: ${display_label_s}`);
-					} else {
-						console.log(`⚠️ الرابط موجود بالفعل: ${display_label_s}`);
-					}
-				}
-			}
-	
-			$(`.close-${safe_label_s}`).on("click", () => {
-				$(`.sub-layout-main-section-wrapper .page-${safe_label_s}`).removeClass(`page_not_in_sub_list`);
-				// إخفاء الصفحة وحذف العنصر
-				$(".sub-layout-main-section-wrapper .page-container").hide();
-				$('.top-buttons').find(`.div-${safe_label_s}`).remove();
-				this.hide_workspace_tabs_overflow_menu();
-				this.update_workspace_tabs_controls();
-			});
-	
-			$(`.btn-${safe_label_s}`).on("click", () => {
-				$(".sub-layout-main-section-wrapper .page-container").hide();
-				
-				console.log(`⚠️ تمت عمليت النقر  : ${display_label_s}`);
-				// إعادة تعيين الخلفيات
-				$('.top-buttons').find(".onboard-spotlight").attr("style", "color: #ffffff !important;");
-				$('.top-buttons').find(`.btn-${safe_label_s}`).attr("style", "color: #000 !important;");
-				$('.top-buttons').find(".nav-btn-os").css("background", "#0097a6");
-				$('.top-buttons').find(`.div-${safe_label_s}`).css("background", "#fafafa");
-			
-				
-				$(`.sub-layout-main-section-wrapper .page-${safe_label_s}`).show();
+
+			let meta = frappe.ui.workspace_tabs.getDetachedPageTabMeta(detachedPageElement);
+			targetWrapper.appendChild(detachedPageElement);
+			frappe.ui.workspace_tabs.openOrActivateContainerTab({
+				...meta,
+				onTabCreated: () => {
+					this.hide_workspace_tabs_overflow_menu();
+					this.update_workspace_tabs_controls();
+				},
+				onTabClosed: () => {
+					this.hide_workspace_tabs_overflow_menu();
+					this.update_workspace_tabs_controls();
+				},
 			});
 
-
-			targetWrapper.appendChild(elementWithoutWrapper);
-			console.log(`✅ تم نقل العنصر بنجاح داخل .sub-layout-main-section-wrapper ${label}`);
 			$(`.sub-layout-main-section-wrapper .layout-side-section`).css("display", "none");
+			return this.page;
+
 		} else {
 			console.log(`✅ لم يتم ايجاد عنصر ليس في مكانه الصحيح  ${label}`);
 		}
